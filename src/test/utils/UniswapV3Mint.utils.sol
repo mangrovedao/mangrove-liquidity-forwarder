@@ -5,6 +5,9 @@ import "forge-std/console.sol";
 import "../../../lib-0_7_6/v3-core/contracts/interfaces/IUniswapV3Pool.sol"; 
 
 import "../mocks/ERC20Mock.sol";
+import "./LiqudityMath.sol";
+import "./MathLib.sol";
+import "./MathLib.sol";
 
 contract UniswapV3Mint {
 
@@ -16,17 +19,22 @@ contract UniswapV3Mint {
 
     struct Params {
         IUniswapV3Pool pool;
-        uint256[2] balances;
         LiquidityRange[] liquidity;
-        bool transferInMintCallback;
-        bool transferInSwapCallback;
-        bool mintLiqudity;
     }
 
     struct LiquidityRange {
         int24 lowerTick;
         int24 upperTick;
         uint128 amount;
+    }
+
+    function liquidityRanges(LiquidityRange memory range)
+        internal
+        pure
+        returns (LiquidityRange[] memory ranges)
+    {
+        ranges = new LiquidityRange[](1);
+        ranges[0] = range;
     }
 
     function liquidityRange(
@@ -37,12 +45,12 @@ contract UniswapV3Mint {
         uint256 currentPrice
     ) internal pure returns (LiquidityRange memory range) {
         range = LiquidityRange({
-            lowerTick: tick60(lowerPrice),
-            upperTick: tick60(upperPrice),
+            lowerTick: MathLib.tick60(lowerPrice),
+            upperTick: MathLib.tick60(upperPrice),
             amount: LiquidityMath.getLiquidityForAmounts(
-                sqrtP(currentPrice),
-                sqrtP60(lowerPrice),
-                sqrtP60(upperPrice),
+                MathLib.sqrtP(currentPrice),
+                MathLib.sqrtP60(lowerPrice),
+                MathLib.sqrtP60(upperPrice),
                 amount0,
                 amount1
             )
@@ -52,7 +60,7 @@ contract UniswapV3Mint {
     function mint(
         address minter,
         Params memory params
-    ) public {
+    ) public returns (uint256 poolBalance0, uint256 poolBalance1) {
         bytes memory data = abi.encode(
             CallBackData({
                 token0: params.pool.token0(),
@@ -71,6 +79,8 @@ contract UniswapV3Mint {
                 params.liquidity[i].amount,
                 data
             );
+            poolBalance0 += poolBalance0Tmp;
+            poolBalance1 += poolBalance1Tmp;
         }
     }
 

@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.14;
 
-import "prb-math/PRBMath.sol";
-import "./FixedPoint96.sol";
+import "../../../lib-0_7_6/v3-core/contracts/libraries/FixedPoint96.sol";
+
+import "../../../lib/prb-math/src/Common.sol";
 
 library LiquidityMath {
     /// $L = \frac{\Delta x \sqrt{P_u} \sqrt{P_l}}{\Delta \sqrt{P}}$
@@ -14,13 +15,13 @@ library LiquidityMath {
         if (sqrtPriceAX96 > sqrtPriceBX96)
             (sqrtPriceAX96, sqrtPriceBX96) = (sqrtPriceBX96, sqrtPriceAX96);
 
-        uint256 intermediate = PRBMath.mulDiv(
+        uint256 intermediate = mulDiv(
             sqrtPriceAX96,
             sqrtPriceBX96,
             FixedPoint96.Q96
         );
         liquidity = uint128(
-            PRBMath.mulDiv(amount0, intermediate, sqrtPriceBX96 - sqrtPriceAX96)
+            mulDiv(amount0, intermediate, sqrtPriceBX96 - sqrtPriceAX96)
         );
     }
 
@@ -34,7 +35,7 @@ library LiquidityMath {
             (sqrtPriceAX96, sqrtPriceBX96) = (sqrtPriceBX96, sqrtPriceAX96);
 
         liquidity = uint128(
-            PRBMath.mulDiv(
+            mulDiv(
                 amount1,
                 FixedPoint96.Q96,
                 sqrtPriceBX96 - sqrtPriceAX96

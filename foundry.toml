@@ -2,6 +2,7 @@
 src = "src"
 out = "out"
 libs = ["lib"]
+optimizer = false
 
 [profile.0_7_6]
 # `src` must be different fot it to work.
