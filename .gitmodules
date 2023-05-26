@@ -10,3 +10,6 @@
 [submodule "lib/prb-math"]
 	path = lib/prb-math
 	url = https://github.com/PaulRBerg/prb-math
+[submodule "lib/mangrove-core"]
+	path = lib/mangrove-core
+	url = https://github.com/mangrovedao/mangrove-core
