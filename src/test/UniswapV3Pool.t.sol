@@ -35,10 +35,24 @@ contract UniswapV3PoolTest is Test, UniswapV3Mint {
     function setBalances() internal {
         balances[address(WETH)][address(addr1)] = 1e24;
         balances[address(DAI)][address(addr1)] = 1e24;
+
+        balances[address(WETH)][address(addr2)] = 1e24;
+        balances[address(DAI)][address(addr2)] = 1e24;
+
         WETH.mint(addr1, balances[address(WETH)][addr1]);
         DAI.mint(addr1, balances[address(DAI)][addr1]);
 
+        WETH.mint(addr2, balances[address(WETH)][addr2]);
+        DAI.mint(addr2, balances[address(DAI)][addr2]);
+
         vm.startPrank(addr1);
+
+        WETH.approve(address(this), 2**256 - 1);
+        DAI.approve(address(this), 2**256 - 1);
+
+        vm.stopPrank();
+
+        vm.startPrank(addr2);
 
         WETH.approve(address(this), 2**256 - 1);
         DAI.approve(address(this), 2**256 - 1);
@@ -63,15 +77,13 @@ contract UniswapV3PoolTest is Test, UniswapV3Mint {
         console.log('Contract created successfully');
     }
 
-    function testAllGod() public {
-
-
+    function testMintLiqudityOnUniswapV3() public {
         (
             uint256 poolBalance0,
             uint256 poolBalance1
         ) = mint(
             addr1,
-            Params({
+            MintParams({
                 pool: pool,
                 liquidity: liquidityRanges(
                     liquidityRange(500, 1500, 1e18, 1000e18, initialPrice)
@@ -79,21 +91,108 @@ contract UniswapV3PoolTest is Test, UniswapV3Mint {
             })
         );
 
-        console.logUint(poolBalance0);
-        console.logUint(poolBalance1);
+        (
+            uint160 sqrtPriceX96,
+            int24 tick,
+            ,// uint16 observationIndex,
+            ,// uint16 observationCardinality,
+            ,// uint16 observationCardinalityNext,
+            ,// uint8 feeProtocol,
+            // bool unlocked
+        ) = pool.slot0();
+        console.logUint(sqrtPriceX96);
+        console.logInt(tick);
+    }
+
+    function testSwapWETHToDaiUniswapV3() public {
+        (
+            uint256 poolBalance0,
+            uint256 poolBalance1
+        ) = mint(
+            addr1,
+            MintParams({
+                pool: pool,
+                liquidity: liquidityRanges(
+                    liquidityRange(500, 1500, 1e18, 1000e18, initialPrice)
+                )
+            })
+        );
+
+        uint256 amoutWETHBeforeSwap = WETH.balanceOf(addr2);
+        uint256 amoutDAIBeforeSwap = DAI.balanceOf(addr2);
+        swap(
+            addr2,
+            SwapParams({
+                pool: pool,
+                tokenIn: address(WETH),
+                tokenOut: address(DAI),
+                amount: 1e5
+            })
+        );
+
+        console.log('Swap WETH -> DAI');
+        console.log('WETH balances');
+        console.logUint(amoutWETHBeforeSwap);
+        console.logUint(WETH.balanceOf(addr2));
+
+        console.log('Dai balances');
+        console.logUint(amoutDAIBeforeSwap);
+        console.logUint(DAI.balanceOf(addr2));
+
+        assertEq(amoutWETHBeforeSwap > WETH.balanceOf(addr2), true);
+        assertEq(amoutDAIBeforeSwap < DAI.balanceOf(addr2), true);
+    }
+
+    function testSwapDAIToWETHUniswapV3() public {
+        (
+            uint256 poolBalance0,
+            uint256 poolBalance1
+        ) = mint(
+            addr1,
+            MintParams({
+                pool: pool,
+                liquidity: liquidityRanges(
+                    liquidityRange(500, 1500, 1e18, 1000e18, initialPrice)
+                )
+            })
+        );
+
+        uint256 amoutWETHBeforeSwap = WETH.balanceOf(addr2);
+        uint256 amoutDAIBeforeSwap = DAI.balanceOf(addr2);
+        swap(
+            addr2,
+            SwapParams({
+                pool: pool,
+                tokenIn: address(DAI),
+                tokenOut: address(WETH),
+                amount: 1e5
+            })
+        );
+
+        console.log('Swap DAI -> WETH');
+        console.log('Dai balances');
+        console.logUint(amoutDAIBeforeSwap);
+        console.logUint(DAI.balanceOf(addr2));
+
+        console.log('WETH balances');
+        console.logUint(amoutWETHBeforeSwap);
+        console.logUint(WETH.balanceOf(addr2));
+
+        assertEq(amoutWETHBeforeSwap < WETH.balanceOf(addr2), true);
+        assertEq(amoutDAIBeforeSwap > DAI.balanceOf(addr2), true);
 
         (
             uint160 sqrtPriceX96,
             int24 tick,
-            uint16 observationIndex,
-            uint16 observationCardinality,
-            uint16 observationCardinalityNext,
-            uint8 feeProtocol,
-            bool unlocked
+            ,// uint16 observationIndex,
+            ,// uint16 observationCardinality,
+            ,// uint16 observationCardinalityNext,
+            ,// uint8 feeProtocol,
+            // bool unlocked
         ) = pool.slot0();
+
         console.logUint(sqrtPriceX96);
         console.logInt(tick);
-        // assertEq(true, true);
     }
 
 }

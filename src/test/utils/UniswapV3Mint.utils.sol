@@ -11,15 +11,22 @@ import "./MathLib.sol";
 
 contract UniswapV3Mint {
 
-    struct CallBackData {
+    struct CallbackData {
         address token0;
         address token1;
         address payer;
     }
 
-    struct Params {
+    struct MintParams {
         IUniswapV3Pool pool;
         LiquidityRange[] liquidity;
+    }
+
+    struct SwapParams {
+        IUniswapV3Pool pool;
+        address tokenIn;
+        address tokenOut;
+        uint256 amount;
     }
 
     struct LiquidityRange {
@@ -59,10 +66,10 @@ contract UniswapV3Mint {
 
     function mint(
         address minter,
-        Params memory params
+        MintParams memory params
     ) public returns (uint256 poolBalance0, uint256 poolBalance1) {
         bytes memory data = abi.encode(
-            CallBackData({
+            CallbackData({
                 token0: params.pool.token0(),
                 token1: params.pool.token1(),
                 payer: minter
@@ -84,18 +91,71 @@ contract UniswapV3Mint {
         }
     }
 
-
     function uniswapV3MintCallback(
         uint256 amount0,
         uint256 amount1,
         bytes calldata data
     ) public {
-        CallBackData memory extra = abi.decode(
+        CallbackData memory extra = abi.decode(
             data,
-            (CallBackData)
+            (CallbackData)
         );
 
         IERC20(extra.token0).transferFrom(extra.payer, msg.sender, amount0);
         IERC20(extra.token1).transferFrom(extra.payer, msg.sender, amount1);
     }
+
+    function swap(
+        address payer,
+        SwapParams memory params
+    ) public {
+        bool zeroForOne = params.tokenIn < params.tokenOut; // TokenIn TokenOut
+
+        bytes memory data = abi.encode(
+            CallbackData({
+                token0: params.pool.token0(),
+                token1: params.pool.token1(),
+                payer: payer
+            })
+        );
+
+        params.pool.swap(
+            payer,
+            zeroForOne,
+            1e5,
+            zeroForOne ? TickMath.MIN_SQRT_RATIO + 1 : TickMath.MAX_SQRT_RATIO - 1,
+            data
+        );
+
+    }
+
+
+    function uniswapV3SwapCallback(
+        int256 amount0,
+        int256 amount1,
+        bytes calldata data
+    ) public {
+        CallbackData memory cbData = abi.decode(
+            data,
+            (CallbackData)
+        );
+
+        if (amount0 > 0) {
+            IERC20(cbData.token0).transferFrom(
+                cbData.payer,
+                msg.sender,
+                uint256(amount0)
+            );
+        }
+
+        if (amount1 > 0) {
+            IERC20(cbData.token1).transferFrom(
+                cbData.payer,
+                msg.sender,
+                uint256(amount1)
+            );
+        }
+    }
+
+
 }
