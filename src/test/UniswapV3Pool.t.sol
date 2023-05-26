@@ -7,15 +7,16 @@ import "../../lib-0_7_6/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 import "../../lib-0_7_6/v3-core/contracts/interfaces/IUniswapV3Pool.sol"; 
 
 import "./mocks/ERC20Mock.sol"; 
-import "./utils/UniswapV3Mint.utils.sol";
+import "./utils/UniswapV3Utils.sol";
 import "./utils/MathLib.sol";
+import "../../lib/prb-math/src/Common.sol";
 
 interface CheatCodes {
    // Gets address for a given private key, (privateKey) => (address)
    function addr(uint256) external returns (address);
 }
 
-contract UniswapV3PoolTest is Test, UniswapV3Mint {
+contract UniswapV3PoolTest is Test, UniswapV3Utils {
 
     address public owner;
     address public addr1;
@@ -67,6 +68,10 @@ contract UniswapV3PoolTest is Test, UniswapV3Mint {
 
         WETH = new ERC20Mock("WETH", "WETH", 18); 
         DAI = new ERC20Mock("DAI", "DAI", 18); 
+
+        bool isWethDai = address(WETH) < address(DAI);
+
+        console.log(isWethDai ? 'WETH/DAI' : 'DAI/WETH');
 
         factory = IUniswapV3Factory(deployCode("UniswapV3Factory.sol:UniswapV3Factory")); 
         pool = IUniswapV3Pool(

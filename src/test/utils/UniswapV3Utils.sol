@@ -9,7 +9,7 @@ import "./LiqudityMath.sol";
 import "./MathLib.sol";
 import "./MathLib.sol";
 
-contract UniswapV3Mint {
+contract UniswapV3Utils {
 
     struct CallbackData {
         address token0;
@@ -139,6 +139,10 @@ contract UniswapV3Mint {
             data,
             (CallbackData)
         );
+
+        console.log("Swap Callback, amout0, amount1");
+        console.logInt(amount0);
+        console.logInt(amount1);
 
         if (amount0 > 0) {
             IERC20(cbData.token0).transferFrom(
