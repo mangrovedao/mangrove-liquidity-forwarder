@@ -76,3 +76,36 @@ const resultBase4 = computeBase(price4, volumeQuote4, 6n, 18n);
 
 console.log('volumeBase4', volumeBase4, resultQuote4, '===', 1000n * 10n**6n);
 console.log('volumeQuote4', volumeQuote4, resultBase4, '===', 10n**18n);
+
+const order = {
+  wants: 1n * 10n**18n,
+  gives: 990n * 10n **6n
+} // wants > gives, wants: BASE, gives: QUOTE
+
+console.log(order.wants/order.gives, price4);
+
+let orderPrice = order.wants / order.gives;
+
+console.log();
+console.log('orderPrice', orderPrice);
+console.log('sourcePrice', price4);
+let resultBase = computeBase(price4,  order.gives, 6n, 18n);
+console.log('volumeBase:', resultBase, 'wants', order.wants);
+console.log();
+
+const order2 = {
+  gives: 1n * 10n**18n,
+  wants: 1010n * 10n **6n
+} // gives > wants, wants: QUOTE, gives: BASE
+orderPrice = order2.gives / order2.wants;
+
+console.log();
+console.log('orderPrice', orderPrice);
+console.log('sourcePrice', price4);
+let resultQuote = computeQuote(price4,  order2.gives, 6n, 18n);
+console.log('volumeQuote:', resultQuote, 'wants', order2.wants);
+let resultQuoteWithAcceptanceLoss = (resultQuote * (10_000n + 100n) / 10_000n);
+console.log('acceptedLoss', resultQuoteWithAcceptanceLoss);
+console.log('loss', resultQuote - resultQuoteWithAcceptanceLoss);
+console.log('volumeQuote + 1% < wants',  resultQuoteWithAcceptanceLoss < order2.wants ? 'reneg' : 'accept');
+console.log();
