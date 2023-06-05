@@ -15,6 +15,11 @@ abstract contract AbstractLiqudityForwarder is Direct, Ownable {
     IERC20 BASE;
     IERC20 QUOTE;
 
+    IERC20 token0;
+    IERC20 token1;
+
+    bool inversed;
+
     uint256 QUOTE_TOKEN_VOLUME;
 
     bool initialized = false;
@@ -23,16 +28,31 @@ abstract contract AbstractLiqudityForwarder is Direct, Ownable {
     ///@param mgv The Mangrove deployment.
     ///@param gasreq the gasreq to use for offers
     ///@param reserveId identifier of this contract's reserve when using a router.
-    constructor(IMangrove mgv, uint gasreq, address reserveId, address _pool, uint256 _QUOTE_TOKEN_VOLUME)
+    constructor(
+        IMangrove mgv, 
+        uint gasreq, 
+        address reserveId,
+        IERC20 base,
+        IERC20 quote,
+        address _pool, 
+        uint256 _QUOTE_TOKEN_VOLUME
+    )
         Direct(mgv, NO_ROUTER, gasreq, reserveId) Ownable()
     {
         pool = IUniswapV3Pool(_pool);
-        BASE = IERC20(pool.token0());
-        QUOTE = IERC20(pool.token1());
+        BASE = base;
+        QUOTE = quote;
+
+        token0 = IERC20(pool.token0());
+        token1 = IERC20(pool.token1());
+
+        if (address(base) != pool.token0()) {
+            inversed = true;
+        }
 
         MAX_DECIMALS = BASE.decimals() > QUOTE.decimals() ? BASE.decimals() : QUOTE.decimals();
 
-       QUOTE_TOKEN_VOLUME = _QUOTE_TOKEN_VOLUME;
+        QUOTE_TOKEN_VOLUME = _QUOTE_TOKEN_VOLUME;
     }
 
     function initialize() external onlyOwner {
@@ -46,11 +66,11 @@ abstract contract AbstractLiqudityForwarder is Direct, Ownable {
     function getPrice() virtual internal returns (uint256 price);
 
     function computeQuote(uint256 price, uint256 volume) internal returns (uint256 _volume) {
-        _volume =  (price * volume * 10 ** (MAX_DECIMALS - QUOTE.decimals())) / (10 ** QUOTE.decimals());
+        _volume = price * volume / (10 ** MAX_DECIMALS);
     }
 
     function computeBase(uint256 price, uint256 volume) internal returns (uint256 _volume) {
-        _volume =  (volume * 10 ** (MAX_DECIMALS - BASE.decimals())) * (10 ** BASE.decimals()) / price;
+        _volume = (volume * 10 ** MAX_DECIMALS) / price;
     }
 
     function newBid() internal {
@@ -94,28 +114,21 @@ abstract contract AbstractLiqudityForwarder is Direct, Ownable {
         bytes32 makerData = super.__lastLook__(order);
 
         uint256 sourcePrice = getPrice();
-        uint256 orderPrice = 0;
-        if (order.gives > order.wants) {
-            orderPrice = order.gives / order.wants;
-        } else {
-            orderPrice = order.wants / order.gives;
-        }
+        if (order.outbound_tkn == address(token0)) {
+            // outbound_tkn = token0, inbound_tkn == token1
+            // gives = token0 , wants = token1
+            uint256 token1Volume = computeQuote(sourcePrice, order.gives);
+            token1Volume = token1Volume * (10_000 + acceptedLossBps) / 10_000;
 
-        if (order.outbound_tkn == address(BASE)) {
-            // outbound_tkn = BASE, inbound_tkn == QUOTE
-            // gives = BASE , wants = QUOTE
-            uint256 volumeQuote = computeQuote(sourcePrice, order.gives);
-            volumeQuote = volumeQuote * (10_000 + acceptedLossBps) / 10_000;
-            if (volumeQuote < order.wants) {
+            if (token1Volume < order.wants) {
                 //reneg
             }
-        
         } else {
-            // outbound_tkn = QUOTE, inbound_tkn == BASE
-            // gives = QUOTE , wants = BASE
-            uint256 volumeBase = computeBase(sourcePrice, order.gives);
-            volumeBase = volumeBase * (10_000 + acceptedLossBps) / 10_000;
-            if (volumeBase  < order.wants) {
+            // outbound_tkn = token1, inbound_tkn == token0
+            // gives = token1 , wants = token0
+            uint256 token0Volume = computeBase(sourcePrice, order.gives);
+            token0Volume = token0Volume * (10_000 + acceptedLossBps) / 10_000;
+            if (token0Volume  < order.wants) {
                 // reneg
             }
         }
